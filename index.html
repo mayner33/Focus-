@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="focus">
+<title>focus.</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B0B0A'/%3E%3Cpath d='M8 13V8h5M19 8h5v5M24 19v5h-5M13 24H8v-5' fill='none' stroke='%23D2F55A' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23D2F55A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0B0A; --s1:#141413; --s2:#1C1C1A; --s3:#252522;
+    --line:rgba(237,235,230,.08); --line2:rgba(237,235,230,.14);
+    --txt:#EDEBE6; --muted:#8E8C86; --dim:#5A5954;
+    --lime:#D2F55A; --deep:#FF6A2B; --ko:#FF4D4D;
+    --sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --ease:cubic-bezier(.2,.8,.2,1);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
+  body{min-height:100dvh}
+  button{font:inherit;color:inherit}
+  .mono{font-family:var(--mono);font-feature-settings:"tnum"}
+  .app{max-width:440px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 20px calc(120px + env(safe-area-inset-bottom))}
+
+  /* ---------- Header ---------- */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:21px;letter-spacing:-.04em}
+  .brand i{color:var(--lime);font-style:normal}
+  .status{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:7px;color:var(--muted);padding:8px 11px;border:1px solid var(--line);border-radius:999px}
+  .status .led{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+  .status.locked .led{background:var(--ko);box-shadow:0 0 8px var(--ko)}
+  .status.open{color:var(--lime)} .status.open .led{background:var(--lime);box-shadow:0 0 8px var(--lime)}
+  .status.deep{color:var(--deep)} .status.deep .led{background:var(--deep);box-shadow:0 0 8px var(--deep);animation:blink 1.6s infinite}
+  @keyframes blink{50%{opacity:.35}}
+
+  .view{display:none}
+  .view.on{display:block;animation:in .4s var(--ease)}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .kicker{font:500 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
+  h1{font-size:32px;line-height:1.05;letter-spacing:-.045em;font-weight:600;margin:0 0 8px}
+  h1 em{font-style:normal;color:var(--muted)}
+  .lead{color:var(--muted);margin:0 0 22px;font-size:15px}
+
+  /* ---------- Viewfinder ---------- */
+  .vf{position:relative;aspect-ratio:4/4.4;border-radius:26px;background:var(--s1);overflow:hidden;border:1px solid var(--line)}
+  .vf-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:grayscale(1) contrast(1.1);opacity:.16;transition:opacity .5s}
+  .vf-grid{position:absolute;inset:0;background:
+      linear-gradient(var(--line) 0 0) 33.333% 0/1px 100% no-repeat,
+      linear-gradient(var(--line) 0 0) 66.666% 0/1px 100% no-repeat,
+      linear-gradient(var(--line) 0 0) 0 33.333%/100% 1px no-repeat,
+      linear-gradient(var(--line) 0 0) 0 66.666%/100% 1px no-repeat}
+  .af{position:absolute;inset:22%;transition:inset .6s var(--ease)}
+  .af span{position:absolute;width:30px;height:30px;border:2.5px solid var(--txt);transition:border-color .3s}
+  .af span:nth-child(1){top:0;left:0;border-right:0;border-bottom:0;border-top-left-radius:6px}
+  .af span:nth-child(2){top:0;right:0;border-left:0;border-bottom:0;border-top-right-radius:6px}
+  .af span:nth-child(3){bottom:0;left:0;border-right:0;border-top:0;border-bottom-left-radius:6px}
+  .af span:nth-child(4){bottom:0;right:0;border-left:0;border-top:0;border-bottom-right-radius:6px}
+  .cross{position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%)}
+  .cross::before,.cross::after{content:"";position:absolute;background:var(--txt);opacity:.6}
+  .cross::before{left:50%;top:0;width:1.5px;height:100%;transform:translateX(-50%)}
+  .cross::after{top:50%;left:0;height:1.5px;width:100%;transform:translateY(-50%)}
+  .vf.scan .af{animation:hunt 1s var(--ease) infinite}
+  @keyframes hunt{0%,100%{inset:22%}50%{inset:30%}}
+  .vf.match .af{inset:30%} .vf.match .af span{border-color:var(--lime)}
+  .vf.match .cross::before,.vf.match .cross::after{background:var(--lime);opacity:1}
+  .vf.fail .af span{border-color:var(--ko)} .vf.fail .af{animation:shake .45s}
+  @keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+  .vf.deep .af span{border-color:var(--deep)}
+  .vf-hud{position:absolute;left:16px;right:16px;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+  .vf-hud.top{top:16px} .vf-hud.bot{bottom:16px}
+  .vf-hud b{color:var(--txt);font-weight:500}
+  .vf-msg{position:absolute;left:0;right:0;bottom:46px;text-align:center;font:600 13px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+  .vf.match .vf-msg{color:var(--lime)} .vf.fail .vf-msg{color:var(--ko)} .vf.deep .vf-msg{color:var(--deep)}
+
+  /* ---------- Shutter ---------- */
+  .shoot{display:flex;align-items:center;justify-content:space-between;margin-top:22px}
+  .shoot .side{width:72px;font:500 11px/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .shoot .side b{display:block;color:var(--txt);font-size:15px;letter-spacing:0}
+  .shoot .side.r{text-align:right}
+  .shutter{width:84px;height:84px;border-radius:50%;border:3px solid var(--txt);background:transparent;padding:5px;cursor:pointer;transition:transform .15s var(--ease)}
+  .shutter i{display:block;width:100%;height:100%;border-radius:50%;background:var(--txt);transition:.2s var(--ease)}
+  .shutter:active{transform:scale(.93)}
+  .shutter:active i{transform:scale(.9)}
+  .shutter:disabled{opacity:.3}
+  .shutter.busy i{background:var(--lime);transform:scale(.55);border-radius:30%}
+  .hint{text-align:center;color:var(--muted);font-size:14px;margin-top:14px}
+  .link{color:var(--lime);text-decoration:none;font-weight:500}
+
+  /* ---------- Deep ---------- */
+  .dial{background:var(--s1);border:1px solid var(--line);border-radius:26px;padding:26px 0 18px;position:relative;overflow:hidden}
+  .dial-val{text-align:center;padding:0 20px}
+  .dial-val .n{font:500 76px/1 var(--mono);letter-spacing:-.06em}
+  .dial-val .n small{font-size:26px;color:var(--muted);letter-spacing:0;margin-left:6px}
+  .dial-val .e{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:12px}
+  .dial-val .e b{color:var(--deep);font-weight:500}
+  .ruler-wrap{position:relative;margin-top:24px}
+  .ruler-wrap::before{content:"";position:absolute;left:50%;top:-6px;bottom:20px;width:2px;background:var(--deep);transform:translateX(-50%);border-radius:2px;z-index:2;box-shadow:0 0 12px rgba(255,106,43,.6)}
+  .ruler-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:linear-gradient(90deg,var(--s1),transparent 22%,transparent 78%,var(--s1))}
+  .ruler{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:0 calc(50% - 28px)}
+  .ruler::-webkit-scrollbar{display:none}
+  .tick{flex:none;width:56px;height:62px;scroll-snap-align:center;position:relative;cursor:pointer;
+    background:repeating-linear-gradient(90deg,transparent 0 13px,var(--line2) 13px 14px) 0 0/56px 16px no-repeat}
+  .tick::before{content:"";position:absolute;left:50%;top:0;width:1.5px;height:28px;background:var(--muted);transform:translateX(-50%)}
+  .tick span{position:absolute;left:0;right:0;bottom:0;text-align:center;font:500 12px/1 var(--mono);color:var(--dim)}
+  .tick.on span{color:var(--txt)}
+
+  .notice{display:flex;gap:12px;margin-top:14px;padding:14px 16px;border-radius:18px;border:1px solid rgba(255,106,43,.22);background:rgba(255,106,43,.06);color:#FFB18C;font-size:14px}
+  .notice svg{flex:none;margin-top:2px}
+
+  .hold{position:relative;width:100%;margin-top:16px;height:64px;border-radius:999px;border:none;background:var(--deep);color:#1A0A02;font-weight:600;font-size:16px;cursor:pointer;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none;display:flex;align-items:center;justify-content:center;gap:10px}
+  .hold .fill{position:absolute;inset:0;background:#1A0A02;opacity:.22;transform-origin:left;transform:scaleX(0)}
+  .hold span,.hold svg{position:relative}
+  .sub-hint{text-align:center;font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-top:12px}
+
+  .count{display:grid;place-items:center;position:relative;margin:6px 0 4px}
+  .count svg{width:300px;height:300px}
+  .count .tk{stroke:var(--s3);stroke-width:2.5;stroke-linecap:round;transition:stroke .4s}
+  .count .tk.on{stroke:var(--deep)}
+  .count-c{position:absolute;text-align:center}
+  .count-c .t{font:500 46px/1 var(--mono);letter-spacing:-.04em}
+  .count-c .l{font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:12px}
+  .count-c .l b{color:var(--deep);font-weight:500}
+  .quote{text-align:center;color:var(--muted);font-size:15px;max-width:290px;margin:10px auto 0}
+
+  /* ---------- Réglages ---------- */
+  .sec{margin-top:28px}
+  .sec .kicker{margin-left:4px}
+  .panel{background:var(--s1);border:1px solid var(--line);border-radius:22px;overflow:hidden}
+  .item{padding:16px 18px;border-top:1px solid var(--line)}
+  .item:first-child{border-top:0}
+  .item .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .item .k{font-weight:500}
+  .item .v{font:500 13px/1 var(--mono);color:var(--muted)}
+  .item p{margin:6px 0 0;color:var(--muted);font-size:13.5px}
+  .targets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .tg{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--s2)}
+  .tg img{width:100%;height:100%;object-fit:cover;display:block}
+  .tg .x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(11,11,10,.75);display:grid;place-items:center;cursor:pointer;padding:0}
+  .tg .no{position:absolute;left:8px;bottom:7px;font:500 10px/1 var(--mono);color:#fff;text-shadow:0 1px 4px #000}
+  .tg.add{border:1.5px dashed var(--line2);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font:500 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+  .tg.add:disabled{opacity:.35}
+  .btn{width:100%;margin-top:12px;padding:13px;border-radius:14px;border:1px solid var(--line2);background:var(--s2);font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn:disabled{opacity:.35}
+  .test{display:none;margin-top:10px;font:500 13px/1.4 var(--mono);padding:12px;border-radius:12px;background:var(--s2)}
+  .test.ok{display:block;color:var(--lime)} .test.ko{display:block;color:var(--ko)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent;margin:8px 0 0}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--txt) var(--p,50%),var(--s3) var(--p,50%))}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--txt);margin-top:-10px;box-shadow:0 0 0 6px rgba(237,235,230,.08)}
+  .seg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--s2);padding:4px;border-radius:12px;margin-top:12px}
+  .seg button{border:none;background:transparent;padding:9px 0;border-radius:9px;font:500 12.5px/1 var(--mono);color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--txt);color:var(--bg)}
+  .field{display:block;margin-top:10px}
+  .field input{width:100%;font:500 14px var(--mono);color:var(--txt);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+
+  details.guide summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  details.guide summary::-webkit-details-marker{display:none}
+  details.guide[open] summary svg{transform:rotate(45deg)}
+  details.guide svg{transition:transform .2s}
+  .g{font-size:14px;color:#C9C7C1;padding-top:6px}
+  .g h4{font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--lime);margin:20px 0 10px}
+  .g ol{margin:0;padding-left:20px}
+  .g li{margin:5px 0}
+  .g code{font:12px var(--mono);background:var(--s2);padding:2px 6px;border-radius:6px;color:var(--txt)}
+  .g em{font-style:normal;color:var(--deep)}
+
+  /* ---------- Nav ---------- */
+  nav{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:4px;padding:5px;border-radius:999px;background:rgba(28,28,26,.78);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);border:1px solid var(--line2);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  nav button{border:none;background:transparent;border-radius:999px;padding:11px 18px;display:flex;align-items:center;gap:8px;font:500 14px var(--sans);color:var(--muted);cursor:pointer;transition:.25s var(--ease)}
+  nav button span{display:none}
+  nav button.on{background:var(--txt);color:var(--bg)}
+  nav button.on span{display:inline}
+  nav button[data-v=deep].on{background:var(--deep);color:#1A0A02}
+
+  .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,12px);background:var(--txt);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:.3s var(--ease);max-width:88vw;text-align:center}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1C1C1A"/><path d="M8 13V8h5M19 8h5v5M24 19v5h-5M13 24H8v-5" fill="none" stroke="#D2F55A" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="16" r="2.6" fill="#D2F55A"/></svg>
+      <span>focus<i>.</i></span>
+    </div>
+    <div class="status" id="status"><span class="led"></span><span id="statusTxt">—</span></div>
+  </header>
+
+  <!-- ================= ACCÈS ================= -->
+  <section class="view on" id="v-acces">
+    <p class="kicker">Accès</p>
+    <h1 id="accesTitle">Trouve l'objet.<br><em>Prends-le en photo.</em></h1>
+    <p class="lead" id="accesLead">C'est la seule façon d'ouvrir tes applis.</p>
+
+    <div class="vf" id="vf">
+      <div class="vf-bg" id="vfBg"></div>
+      <div class="vf-grid"></div>
+      <div class="af"><span></span><span></span><span></span><span></span></div>
+      <div class="cross"></div>
+      <div class="vf-hud top"><span id="hudL">AF · —</span><span id="hudR">—</span></div>
+      <div class="vf-msg" id="vfMsg"></div>
+      <div class="vf-hud bot"><span>Seuil <b id="hudThr">—</b></span><span>Cibles <b id="hudRefs">0</b></span></div>
+    </div>
+
+    <div class="shoot">
+      <div class="side"><b id="sideDur">30</b>min d'accès</div>
+      <button class="shutter" id="shutter" disabled aria-label="Prendre la photo"><i></i></button>
+      <div class="side r"><b id="sideScore">—</b>dernier score</div>
+    </div>
+    <div class="hint" id="hint">Chargement de la reconnaissance…</div>
+  </section>
+
+  <!-- ================= DEEP ================= -->
+  <section class="view" id="v-deep">
+    <div id="deepSetup">
+      <p class="kicker">Mode Deep</p>
+      <h1>Verrouillage total.<br><em>Sans retour.</em></h1>
+      <p class="lead">Pendant un Deep, même l'objet ne débloque plus rien.</p>
+
+      <div class="dial">
+        <div class="dial-val">
+          <div class="n"><span id="dVal">02</span><small>h</small></div>
+          <div class="e">Fin <b id="dEnd">—</b></div>
+        </div>
+        <div class="ruler-wrap"><div class="ruler" id="ruler"></div></div>
+      </div>
+
+      <div class="notice">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <div>Un Deep lancé ne peut être ni arrêté, ni raccourci, ni remplacé.</div>
+      </div>
+
+      <button class="hold" id="hold"><div class="fill" id="holdFill"></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span id="holdTxt">Maintenir pour verrouiller</span>
+      </button>
+      <div class="sub-hint">Appui long · 1,5 s</div>
+    </div>
+
+    <div id="deepOn" style="display:none">
+      <p class="kicker" style="text-align:center;color:var(--deep)">● Deep en cours</p>
+      <div class="count">
+        <svg viewBox="0 0 300 300" id="ticks"></svg>
+        <div class="count-c">
+          <div class="t" id="cd">00:00:00</div>
+          <div class="l">Fin <b id="cdEnd">—</b></div>
+        </div>
+      </div>
+      <p class="quote">Tes applis dorment. Toi, profites-en.</p>
+    </div>
+  </section>
+
+  <!-- ================= RÉGLAGES ================= -->
+  <section class="view" id="v-reglages">
+    <p class="kicker">Réglages</p>
+    <h1>Ta clé,<br><em>c'est un objet.</em></h1>
+    <p class="lead">Les photos restent sur ton téléphone. Rien n'est envoyé.</p>
+
+    <div class="sec">
+      <p class="kicker">Objet clé</p>
+      <div class="panel">
+        <div class="item">
+          <div class="targets" id="targets"></div>
+          <p>Choisis un objet qui ne bouge pas, loin de ton lit ou de ton canapé. Prends-le 2 ou 3 fois, cadré au centre, avec des angles et des lumières un peu différents.</p>
+          <button class="btn" id="btnTest" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            Tester une photo
+          </button>
+          <div class="test" id="testRes"></div>
+        </div>
+        <div class="item">
+          <div class="row"><span class="k">Sévérité</span><span class="v" id="thrVal">80 %</span></div>
+          <input type="range" id="thr" min="50" max="95" step="1">
+          <p>L'objet est refusé : baisse. Autre chose passe : monte.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <p class="kicker">Accès</p>
+      <div class="panel">
+        <div class="item">
+          <div class="row"><span class="k">Durée après la photo</span><span class="v" id="durVal">30 min</span></div>
+          <div class="seg" id="seg">
+            <button data-m="5">5</button><button data-m="10">10</button><button data-m="15">15</button><button data-m="30">30</button><button data-m="60">60</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <p class="kicker">Raccourcis iPhone</p>
+      <div class="panel">
+        <div class="item">
+          <div class="k">Nom du raccourci d'accès</div>
+          <label class="field"><input id="scOpen" autocapitalize="off" autocomplete="off"></label>
+        </div>
+        <div class="item">
+          <div class="k">Nom du raccourci Deep</div>
+          <label class="field"><input id="scDeep" autocapitalize="off" autocomplete="off"></label>
+        </div>
+        <div class="item">
+          <details class="guide">
+            <summary><span class="k">Guide d'installation</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></summary>
+            <div class="g">
+              <p>Dans l'app Raccourcis. Les fichiers vont dans iCloud Drive › Raccourcis.</p>
+
+              <h4>01 · Focus Ouvrir</h4>
+              <ol>
+                <li><b>Obtenir le fichier</b> <code>deep.txt</code>, « Erreur si introuvable » désactivé.</li>
+                <li><b>Obtenir les dates de l'entrée</b>.</li>
+                <li><b>Si</b> Dates <em>est après</em> Date actuelle → <b>Afficher la notification</b> « Deep en cours » → <b>Arrêter ce raccourci</b>. Fin si.</li>
+                <li><b>Obtenir les nombres de l'entrée</b> : Entrée du raccourci.</li>
+                <li><b>Ajuster la date</b> : ajouter <i>Nombres</i> minutes à Date actuelle.</li>
+                <li><b>Texte</b> : Date ajustée, format ISO 8601.</li>
+                <li><b>Enregistrer le fichier</b> <code>acces.txt</code>, « Demander où » désactivé, « Remplacer » activé.</li>
+                <li><b>Afficher la notification</b> « Accès ouvert ».</li>
+              </ol>
+
+              <h4>02 · Focus Deep</h4>
+              <ol>
+                <li><b>Obtenir le fichier</b> <code>deep.txt</code> (sans erreur) → <b>Obtenir les dates de l'entrée</b>.</li>
+                <li><b>Si</b> Dates <em>est après</em> Date actuelle → notification « Deep déjà en cours » → <b>Arrêter ce raccourci</b>. Fin si.</li>
+                <li><b>Obtenir les nombres de l'entrée</b> : Entrée du raccourci.</li>
+                <li><b>Ajuster la date</b> : ajouter <i>Nombres</i> heures à Date actuelle.</li>
+                <li><b>Texte</b> : Date ajustée (ISO 8601) → <b>Enregistrer le fichier</b> <code>deep.txt</code> (remplacer).</li>
+                <li><b>Afficher la notification</b> « Deep lancé ».</li>
+              </ol>
+
+              <h4>03 · Focus Garde</h4>
+              <ol>
+                <li><b>Obtenir le fichier</b> <code>deep.txt</code> (sans erreur) → <b>Obtenir les dates de l'entrée</b>.</li>
+                <li><b>Si</b> Dates <em>est après</em> Date actuelle → <b>Ouvrir les URL</b> <code>https://mayner33.github.io/Focus-/?fin=</code> suivi de <i>Fichier</i> → <b>Arrêter ce raccourci</b>. Fin si.</li>
+                <li><b>Obtenir le fichier</b> <code>acces.txt</code> (sans erreur) → <b>Obtenir les dates de l'entrée</b>.</li>
+                <li><b>Si</b> Dates <em>est après</em> Date actuelle → rien. <b>Sinon</b> → <b>Ouvrir les URL</b> <code>https://mayner33.github.io/Focus-/</code>. Fin si.</li>
+              </ol>
+
+              <h4>04 · Automatisation</h4>
+              <ol>
+                <li>Automatisation › <b>App</b> › TikTok, Instagram…</li>
+                <li>« Est ouverte », <b>Exécuter immédiatement</b>, sans notification.</li>
+                <li>Action : <b>Exécuter le raccourci</b> Focus Garde.</li>
+              </ol>
+              <p style="color:var(--muted);font-size:13px">« Focus Ouvrir » lancé à la main n'ouvre rien : il ne reçoit aucune durée.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav id="nav">
+  <button data-v="acces" class="on" aria-label="Accès">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V5h4M16 5h4v4M20 15v4h-4M8 19H4v-4"/><circle cx="12" cy="12" r="2"/></svg>
+    <span>Accès</span>
+  </button>
+  <button data-v="deep" aria-label="Deep">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <span>Deep</span>
+  </button>
+  <button data-v="reglages" aria-label="Réglages">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+    <span>Réglages</span>
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="cam" accept="image/*" capture="environment" hidden>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'focus.v1', MAX_REFS = 6, HOLD_MS = 1500, SLOT = 56;
+
+  var state = { refs: [], threshold: 0.80, openMin: 30, scOpen: 'Focus Ouvrir', scDeep: 'Focus Deep',
+                deepEnd: 0, deepTotal: 0, openUntil: 0, lastScore: null };
+  // Reprise des anciennes versions (photos de référence conservées)
+  ['deverrou.v2', 'deverrou.v1'].some(function (k) {
+    try { var o = JSON.parse(localStorage.getItem(k)); if (o && o.refs && o.refs.length) { state.refs = o.refs; if (o.threshold) state.threshold = o.threshold; return true; } } catch (e) {}
+    return false;
+  });
+  try { var s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { toast("Enregistrement impossible"); } }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var model = null;
+
+  // Fin de Deep transmise par « Focus Garde » (?fin=...)
+  try {
+    var fin = new URLSearchParams(location.search).get('fin');
+    if (fin) {
+      var d = new Date(fin.trim().replace(' ', '+'));
+      if (!isNaN(d) && d.getTime() > Date.now() && d.getTime() > state.deepEnd) {
+        state.deepEnd = d.getTime();
+        if (state.deepTotal < state.deepEnd - Date.now()) state.deepTotal = state.deepEnd - Date.now();
+        save();
+      }
+      history.replaceState(null, '', location.pathname);
+    }
+  } catch (e) {}
+
+  function deepOn() { return state.deepEnd > Date.now(); }
+  function openOn() { return state.openUntil > Date.now(); }
+
+  // ---------- Utilitaires ----------
+  var tt;
+  function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function pct(x) { return Math.round(x * 100) + ' %'; }
+  function hm(ms) { var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function when(ms) {
+    var d = new Date(ms), n = new Date();
+    var diff = (new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5;
+    return (diff === 0 ? "auj." : diff === 1 ? 'demain' : d.toLocaleDateString('fr-FR', { weekday: 'short' })) + ' ' + hm(ms);
+  }
+  function runShortcut(name, text) {
+    var url = 'shortcuts://run-shortcut?name=' + encodeURIComponent(name) + '&input=text&text=' + encodeURIComponent(String(text));
+    location.href = url; return url;
+  }
+  function fillRange(el) { el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); }
+
+  // ---------- Navigation ----------
+  function go(v) {
+    document.querySelectorAll('.view').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
+    document.querySelectorAll('nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+    window.scrollTo(0, 0);
+    if (v === 'deep' && !deepOn()) requestAnimationFrame(function () { setHours(hours, true); });
+  }
+  document.querySelectorAll('nav button').forEach(function (b) { b.onclick = function () { go(b.dataset.v); }; });
+
+  // ---------- Caméra + reconnaissance ----------
+  var pending = null;
+  function takePhoto() { return new Promise(function (r) { pending = r; var c = $('cam'); c.value = ''; c.click(); }); }
+  $('cam').addEventListener('change', function (e) { var f = e.target.files && e.target.files[0], cb = pending; pending = null; if (f && cb) cb(f); });
+
+  function toCanvas(file, size) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight, m = Math.min(w, h), c = document.createElement('canvas');
+        c.width = c.height = size;
+        c.getContext('2d').drawImage(img, (w - m) / 2, (h - m) / 2, m, m, 0, 0, size, size);
+        URL.revokeObjectURL(url); res(c);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('Image illisible')); };
+      img.src = url;
+    });
+  }
+  async function embed(c) {
+    var t = tf.tidy(function () { return model.infer(c, true); });
+    var a = Array.from(await t.data()); t.dispose();
+    var n = Math.sqrt(a.reduce(function (s, v) { return s + v * v; }, 0)) || 1;
+    return a.map(function (v) { return Math.round(v / n * 1e5) / 1e5; });
+  }
+  function sim(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+  async function score(file) {
+    var e = await embed(await toCanvas(file, 224)), best = 0;
+    state.refs.forEach(function (r) { best = Math.max(best, sim(e, r.emb)); });
+    return best;
+  }
+  async function addRef(file) {
+    var emb = await embed(await toCanvas(file, 224));
+    var t = await toCanvas(file, 240);
+    state.refs.push({ emb: emb, thumb: t.toDataURL('image/jpeg', 0.72) });
+    save();
+  }
+
+  // ---------- Accès ----------
+  var vf = $('vf'), vfTimer;
+  function vfState(cls, msg, keep) {
+    vf.classList.remove('scan', 'match', 'fail', 'deep');
+    if (cls) vf.classList.add(cls);
+    $('vfMsg').textContent = msg || '';
+    clearTimeout(vfTimer);
+    if (cls && !keep) vfTimer = setTimeout(function () { vfState(deepOn() ? 'deep' : '', deepOn() ? 'Verrouillé · Deep' : ''); }, 4000);
+  }
+
+  $('shutter').onclick = async function () {
+    if (deepOn()) { go('deep'); return; }
+    var f = await takePhoto();
+    var sh = $('shutter'); sh.classList.add('busy'); sh.disabled = true;
+    vfState('scan', 'Mise au point…', true);
+    try {
+      if (!state.refs.length) {
+        await addRef(f);
+        vfState('match', 'Objet enregistré');
+        toast('Objet clé enregistré. Ajoutes-en 1 ou 2 autres dans Réglages.');
+      } else {
+        var s = await score(f);
+        state.lastScore = s; save();
+        if (deepOn()) { vfState('deep', 'Verrouillé · Deep', true); }
+        else if (s >= state.threshold) {
+          state.openUntil = Date.now() + state.openMin * 60000; save();
+          vfState('match', 'Correspondance · ' + pct(s));
+          var url = runShortcut(state.scOpen, state.openMin);
+          $('hint').innerHTML = 'Accès ouvert ' + state.openMin + ' min. <a class="link" href="' + url + '">Relancer</a>';
+        } else {
+          vfState('fail', 'Pas le bon objet · ' + pct(s));
+        }
+      }
+    } catch (e) { vfState('fail', 'Erreur'); toast(e.message); }
+    sh.classList.remove('busy');
+    render();
+  };
+
+  // ---------- Deep ----------
+  var hours = 2;
+  var ruler = $('ruler');
+  for (var h = 1; h <= 24; h++) {
+    var t = document.createElement('div'); t.className = 'tick'; t.dataset.h = h;
+    t.innerHTML = '<span>' + h + '</span>';
+    t.onclick = (function (v) { return function () { setHours(v, true, true); }; })(h);
+    ruler.appendChild(t);
+  }
+  function setHours(v, scroll, smooth) {
+    hours = Math.max(1, Math.min(24, v));
+    $('dVal').textContent = pad(hours);
+    $('dEnd').textContent = when(Date.now() + hours * 36e5);
+    ruler.querySelectorAll('.tick').forEach(function (t) { t.classList.toggle('on', +t.dataset.h === hours); });
+    if (scroll) ruler.scrollTo({ left: (hours - 1) * SLOT, behavior: smooth ? 'smooth' : 'auto' });
+  }
+  var rTimer;
+  ruler.addEventListener('scroll', function () {
+    var v = Math.round(ruler.scrollLeft / SLOT) + 1;
+    if (v !== hours) setHours(v, false);
+  }, { passive: true });
+
+  var hs = 0, hr = 0;
+  function holdFrame() {
+    var p = Math.min(1, (performance.now() - hs) / HOLD_MS);
+    $('holdFill').style.transform = 'scaleX(' + p + ')';
+    if (p >= 1) return holdEnd(true);
+    hr = requestAnimationFrame(holdFrame);
+  }
+  function holdEnd(done) {
+    cancelAnimationFrame(hr); if (!hs) return; hs = 0;
+    var f = $('holdFill'); f.style.transition = 'transform .3s'; f.style.transform = 'scaleX(0)';
+    setTimeout(function () { f.style.transition = ''; }, 320);
+    $('holdTxt').textContent = 'Maintenir pour verrouiller';
+    if (done === true) startDeep(hours);
+  }
+  var hb = $('hold');
+  hb.addEventListener('pointerdown', function (e) { e.preventDefault(); if (deepOn()) return; hs = performance.now(); $('holdTxt').textContent = 'Continue…'; hr = requestAnimationFrame(holdFrame); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { hb.addEventListener(ev, function () { holdEnd(false); }); });
+  hb.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  function startDeep(h) {
+    state.deepTotal = h * 36e5; state.deepEnd = Date.now() + state.deepTotal; state.openUntil = 0;
+    save(); render();
+    runShortcut(state.scDeep, h);
+  }
+
+  // Cadran de ticks
+  var NT = 72, svg = $('ticks'), ticks = [];
+  for (var i = 0; i < NT; i++) {
+    var a = (i / NT) * 2 * Math.PI - Math.PI / 2, big = i % 6 === 0;
+    var r1 = big ? 124 : 130, r2 = 142;
+    var ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    ln.setAttribute('x1', 150 + r1 * Math.cos(a)); ln.setAttribute('y1', 150 + r1 * Math.sin(a));
+    ln.setAttribute('x2', 150 + r2 * Math.cos(a)); ln.setAttribute('y2', 150 + r2 * Math.sin(a));
+    ln.setAttribute('class', 'tk'); svg.appendChild(ln); ticks.push(ln);
+  }
+  function renderCount() {
+    var left = Math.max(0, state.deepEnd - Date.now());
+    $('cd').textContent = pad(Math.floor(left / 36e5)) + ':' + pad(Math.floor(left % 36e5 / 6e4)) + ':' + pad(Math.floor(left % 6e4 / 1e3));
+    $('cdEnd').textContent = when(state.deepEnd);
+    var lit = Math.ceil(NT * Math.min(1, left / (state.deepTotal || left || 1)));
+    ticks.forEach(function (t, i) { t.classList.toggle('on', i < lit); });
+  }
+
+  // ---------- Réglages ----------
+  var xIc = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  function renderTargets() {
+    var box = $('targets'); box.innerHTML = '';
+    state.refs.forEach(function (r, i) {
+      var d = document.createElement('div'); d.className = 'tg';
+      d.innerHTML = '<img alt=""><span class="no">' + pad(i + 1) + '</span><button class="x" aria-label="Supprimer">' + xIc + '</button>';
+      d.querySelector('img').src = r.thumb;
+      d.querySelector('.x').onclick = function () { if (confirm('Supprimer cette photo ?')) { state.refs.splice(i, 1); save(); render(); } };
+      box.appendChild(d);
+    });
+    if (state.refs.length < MAX_REFS) {
+      var b = document.createElement('button'); b.className = 'tg add'; b.disabled = !model;
+      b.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' + (model ? 'Ajouter' : 'Chargement');
+      b.onclick = async function () { var f = await takePhoto(); try { await addRef(f); toast('Photo ajoutée'); } catch (e) { toast(e.message); } render(); };
+      box.appendChild(b);
+    }
+    $('btnTest').disabled = !model || !state.refs.length;
+  }
+  $('btnTest').onclick = async function () {
+    var f = await takePhoto(), el = $('testRes');
+    el.className = 'test ok'; el.textContent = 'Analyse…';
+    try { var s = await score(f), ok = s >= state.threshold;
+      el.className = 'test ' + (ok ? 'ok' : 'ko');
+      el.textContent = 'Score ' + pct(s) + (ok ? ' → débloquerait' : ' → refusé (seuil ' + pct(state.threshold) + ')');
+    } catch (e) { el.className = 'test ko'; el.textContent = e.message; }
+  };
+
+  var thr = $('thr'); thr.value = Math.round(state.threshold * 100); fillRange(thr);
+  thr.addEventListener('input', function () { state.threshold = thr.value / 100; fillRange(thr); save(); render(); });
+
+  document.querySelectorAll('#seg button').forEach(function (b) { b.onclick = function () { state.openMin = +b.dataset.m; save(); render(); }; });
+
+  [['scOpen', 'Focus Ouvrir'], ['scDeep', 'Focus Deep']].forEach(function (p) {
+    var el = $(p[0]); el.value = state[p[0]];
+    el.addEventListener('change', function () { state[p[0]] = el.value.trim() || p[1]; el.value = state[p[0]]; save(); });
+  });
+
+  // ---------- Rendu ----------
+  function render() {
+    var dp = deepOn(), op = openOn(), st = $('status');
+    if (dp) { st.className = 'status deep'; $('statusTxt').textContent = 'Deep · ' + hm(state.deepEnd); }
+    else if (op) { st.className = 'status open'; $('statusTxt').textContent = 'Ouvert · ' + Math.ceil((state.openUntil - Date.now()) / 6e4) + ' min'; }
+    else { st.className = 'status locked'; $('statusTxt').textContent = 'Verrouillé'; }
+
+    // Accès
+    var last = state.refs[state.refs.length - 1];
+    $('vfBg').style.backgroundImage = last ? 'url(' + last.thumb + ')' : 'none';
+    $('hudThr').textContent = pct(state.threshold);
+    $('hudRefs').textContent = state.refs.length;
+    $('hudL').textContent = model ? 'AF · Prêt' : 'AF · Chargement';
+    $('hudR').textContent = dp ? 'Deep' : op ? 'Ouvert' : 'Verrouillé';
+    $('sideDur').textContent = state.openMin;
+    $('sideScore').textContent = state.lastScore == null ? '—' : Math.round(state.lastScore * 100) + '%';
+    $('shutter').disabled = !model || dp;
+    if (dp) {
+      $('accesTitle').innerHTML = 'Deep en cours.<br><em>Rien ne s\'ouvre.</em>';
+      $('accesLead').textContent = 'Fin ' + when(state.deepEnd) + '. Même l\'objet ne peut rien faire.';
+      $('hint').textContent = 'Reviens à la fin du compte à rebours.';
+      if (!vf.classList.contains('deep')) vfState('deep', 'Verrouillé · Deep', true);
+    } else if (!state.refs.length) {
+      $('accesTitle').innerHTML = 'Choisis ton objet clé.<br><em>Une photo suffit.</em>';
+      $('accesLead').textContent = 'Un meuble, une plante, un poster… loin de ton canapé.';
+      if (model) $('hint').textContent = 'Prends ton objet en photo pour l\'enregistrer.';
+    } else {
+      $('accesTitle').innerHTML = 'Trouve l\'objet.<br><em>Prends-le en photo.</em>';
+      $('accesLead').textContent = 'C\'est la seule façon d\'ouvrir tes applis.';
+      if (model && !/Accès ouvert/.test($('hint').textContent)) $('hint').textContent = 'Cadre l\'objet au centre du viseur.';
+      if (vf.classList.contains('deep')) vfState('', '');
+    }
+    if (!model) $('hint').textContent = 'Chargement de la reconnaissance…';
+
+    // Deep
+    $('deepSetup').style.display = dp ? 'none' : '';
+    $('deepOn').style.display = dp ? '' : 'none';
+    if (dp) renderCount(); else $('dEnd').textContent = when(Date.now() + hours * 36e5);
+
+    // Réglages
+    $('thrVal').textContent = pct(state.threshold);
+    $('durVal').textContent = state.openMin + ' min';
+    document.querySelectorAll('#seg button').forEach(function (b) { b.classList.toggle('on', +b.dataset.m === state.openMin); });
+    renderTargets();
+  }
+
+  var tick = 0;
+  setInterval(function () {
+    if (deepOn()) renderCount();
+    else if (state.deepEnd) { state.deepEnd = 0; state.deepTotal = 0; save(); render(); toast('Deep terminé. Bien joué.'); }
+    if (++tick % 20 === 0) render();
+  }, 1000);
+
+  setHours(2, false);
+  render();
+  if (deepOn()) go('deep');
+
+  mobilenet.load({ version: 2, alpha: 1.0 }).then(function (m) { model = m; render(); })
+    .catch(function () { $('hint').textContent = 'Échec du chargement. Vérifie ta connexion puis recharge.'; });
+})();
+</script>
+</body>
+</html>
